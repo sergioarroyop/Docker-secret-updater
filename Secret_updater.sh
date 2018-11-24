@@ -12,6 +12,11 @@ green () {
 	echo -e "\e[32m $1 \e[0m"
 }
 
+errors () {
+	red "$1"
+	exit 1
+}
+
 ENV_FILE=$1
 SECRET=$2
 SERVICE=$3
@@ -22,12 +27,13 @@ then
 	yellow "- Script usage:"
 	yellow "- ./Secret_updater.sh </example/file.env> <secret_name> <service_name>"
 	exit 1
+	
 else	
 	
 	yellow "- Updating secret $SECRET..."
 	docker secret create ${SECRET}_2 $ENV_FILE &> /dev/null && \
 	green "+ Created new second secret" || \
-	red "- Failed when creating second secret" && exit 1 
+	errors "- Failed when creating second secret"
 
 	yellow "- Updating $SERVICE with new second secret..."
 	docker service update \
@@ -35,17 +41,17 @@ else
 	--secret-add source=${SECRET}_2,target=$SECRET \
 	--detach=false $SERVICE &> /dev/null && \
 	green "+ Service updated successfully" || \
-	red "- Failed when updating service" && exit 1
+	errors "- Failed when updating service"
 
 	yellow "- Deleting old secret..."
 	docker secret rm $SECRET &> /dev/null && \
 	green "+ Old secret deleted successfully" || \
-	red "- Failed when deleting old secret"
+	errors "- Failed when deleting old secret"
 
 	yellow "- Creating secret $SECRET updated..."
 	docker secret create $SECRET $ENV_FILE &> /dev/null && \
 	green "+ Secret created successfully" || \
-	red "- Failed when creating secret" && exit 1
+	errors "- Failed when creating secret"
 
 	yellow "- Updating service $SERVICE with new secret $SECRET..."
 	docker service update \
@@ -53,12 +59,12 @@ else
 	--secret-add source=$SECRET,target=$SECRET \
 	--detach=false $SERVICE &> /dev/null && \
 	green "+ Service updated successfully" || \
-	red "- Failed when updating service" && exit 1
+	errors "- Failed when updating service"
 	
 	yellow "- Deleting second secret"
 	docker secret rm ${SECRET}_2 &> /dev/null && \
 	green "+ Second secret deleted successfully" || \
-	red "- Failed when deleting second secret" && exit 1
+	errors "- Failed when deleting second secret"
 	
 	green "+ Secret updated successfully"
 fi
